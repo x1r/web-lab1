@@ -1,14 +1,14 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from typing import List
 from jose import jwt, JWTError
-from Web.Lab1.website.models.user import User
-from Web.Lab1.website.database import get_db
+from models.user import User
+from models.database import get_db
 from sqlalchemy.orm import Session
 
 app = FastAPI()
 
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
+SECRET_KEY = "your-secret-key"  # Используйте тот же секретный ключ, что и в микросервисе website
+ALGORITHM = "HS256"  # Используйте тот же алгоритм, что и в микросервисе website
 
 class ConnectionManager:
     def __init__(self):
@@ -30,11 +30,9 @@ manager = ConnectionManager()
 async def get_current_user_ws(token: str, db: Session = Depends(get_db)):
     # Декодируем токен и извлекаем email
     try:
-        print(f"Декодируем токен: {token}")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            print("Ошибка: не удалось извлечь email из токена.")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
@@ -51,7 +49,6 @@ async def get_current_user_ws(token: str, db: Session = Depends(get_db)):
     # Проверяем наличие пользователя в базе данных
     user = db.query(User).filter(User.email == email).first()
     if user is None:
-        print(f"Ошибка: пользователь с email {email} не найден.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not find user",
@@ -59,18 +56,19 @@ async def get_current_user_ws(token: str, db: Session = Depends(get_db)):
         )
     return user
 
+
+
 @app.websocket("/ws/chat/{chat_room_id}")
 async def websocket_endpoint(websocket: WebSocket, chat_room_id: int, db: Session = Depends(get_db)):
     # Логируем получение токена
     print(f"Параметры запроса: {websocket.query_params}")
-    token = websocket.query_params.get("token") or websocket.cookies.get("Authorization")
+    token = websocket.query_params.get("token")
 
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         print("Токен отсутствует. Соединение закрыто.")
         return
 
-    # Проверяем, если токен начинается с Bearer, убираем его
     if token.startswith("Bearer "):
         token = token[len("Bearer "):]
 

@@ -1,5 +1,14 @@
-version: "3.9"
 services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: chat_db
+    volumes:
+      - ./db:/var/lib/postgresql/data
+
+
   website:
     build: ./website
     ports:
@@ -20,15 +29,11 @@ services:
       - ./chat:/app
     depends_on:
       - db
-
-  db:
-    image: postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: chat_db
-    volumes:
-      - ./dump:/var/lib/postgresql/data
+      - PYTHONPATH=/app
+      - WATCHFILES_FORCE_POLLING=true
+
+
 
   nginx:
     build: ./nginx

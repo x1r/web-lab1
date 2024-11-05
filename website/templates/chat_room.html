@@ -19,47 +19,43 @@
 </main>
 <script>
     const roomId = "{{ room_id }}";
-    const tokenCookie = document.cookie.split('; ').find(row => row.startsWith('Authorization='));
-    let token = '';
+    const cookieString = document.cookie.split('; ').find(row => row.startsWith('Authorization='));
 
-    if (tokenCookie) {
-        token = tokenCookie.split('=')[1].replace(/"/g, '');  // Извлекаем токен и удаляем лишние кавычки
-        if (token.startsWith("Bearer ")) {
-            token = token.substring("Bearer ".length);
-        }
+    // Проверяем, нашлась ли кука с авторизацией, и корректно ли извлекается значение токена
+    let token = null;
+    if (cookieString) {
+        token = cookieString.split('=')[1].replace(/%22/g, '');  // Убираем кавычки если они есть
     }
 
-    // Устанавливаем WebSocket соединение с переданным токеном
-    const ws = new WebSocket(`ws://${window.location.host}/ws/chat/${roomId}?token=${token}`);
+    if (token) {
+        const ws = new WebSocket(`ws://localhost:8001/ws/chat/${roomId}?token=${token}`);
 
-    ws.onopen = function () {
-        console.log("WebSocket соединение установлено");
-    };
+        ws.onopen = function () {
+            console.log('WebSocket подключен');
+        };
 
-    const chatWindow = document.getElementById('chat-window');
-    const messageForm = document.getElementById('send-message-form');
-    const messageInput = document.getElementById('message');
+        ws.onmessage = function(event) {
+            const chatWindow = document.getElementById('chat-window');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = event.data;
+            chatWindow.appendChild(messageElement);
+            chatWindow.scrollTop = chatWindow.scrollHeight;  // Прокрутка вниз для новых сообщений
+        };
 
-    ws.onmessage = function(event) {
-        const messageElement = document.createElement('div');
-        messageElement.textContent = event.data;
-        chatWindow.appendChild(messageElement);
-        chatWindow.scrollTop = chatWindow.scrollHeight;  // Прокрутка вниз для новых сообщений
-    };
+        const messageForm = document.getElementById('send-message-form');
+        const messageInput = document.getElementById('message');
 
-    messageForm.onsubmit = function(event) {
-        event.preventDefault();
-        const message = messageInput.value;
-        if (message) {
-            ws.send(message);
-            messageInput.value = '';
-        }
-    };
-
-    ws.onclose = function () {
-        console.log("WebSocket соединение закрыто");
-    };
+        messageForm.onsubmit = function(event) {
+            event.preventDefault();
+            const message = messageInput.value;
+            if (message) {
+                ws.send(message);
+                messageInput.value = '';
+            }
+        };
+    } else {
+        console.error('Токен не найден в куках!');
+    }
 </script>
-
 
 {% endblock %}
