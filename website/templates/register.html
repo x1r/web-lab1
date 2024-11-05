@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg">
+    <h2 class="text-2xl font-semibold mb-6 mx-auto text-center">Регистрация</h2>
+    <form id="registerForm" class="space-y-4">
+        <div class="flex items-center w-96 mx-auto">
+            <i class="lucide" data-lucide="mail"></i>
+            <input type="email" id="email" name="email" required placeholder="Email"
+                   class="ml-2 p-3 w-full bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <div class="flex items-center w-96 mx-auto">
+            <i class="lucide" data-lucide="lock"></i>
+            <input type="password" id="password" name="password" required placeholder="Пароль"
+                   class="ml-2 p-3 w-full bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent">
+        </div>
+        <div class="flex justify-center">
+            <button type="button" id="submitBtn"
+                    class="w-48 p-3 bg-accent text-white rounded hover:bg-accent-hover transition duration-300 ease-in-out">
+                Зарегистрироваться
+            </button>
+        </div>
+
+    </form>
+</main>
+
+<script>
+    document.getElementById("submitBtn").addEventListener("click", async function () {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        const formData = {
+            email: email,
+            password: password
+        };
+
+        try {
+            const response = await fetch("/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                alert("Регистрация прошла успешно");
+            } else {
+                alert("Ошибка регистрации");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Произошла ошибка");
+        }
+    });
+
+    lucide.createIcons();
+</script>
+{% endblock %}

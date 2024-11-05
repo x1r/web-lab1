@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+websockets
+jinja2
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart

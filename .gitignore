@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyd
+
+# Docker
+*.log
+*.pid
+*.tar
+*.tgz
+*.bak
+db/dump
+
+# Environment
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.Python
+*.env
+
+# IDE and Editor
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.vscode/
+*.swp
+
+# Operating System
+Thumbs.db
+.DS_Store
+*.directory
+
+# PyCharm
+*.iml
+.idea/
