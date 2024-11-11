@@ -4,9 +4,54 @@
 
 {% block content %}
 <main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg">
+    <div id="notification-success"
+         class="hidden fixed top-10 left-1/2 transform -translate-x-1/2 p-4 bg-green-500 text-white font-semibold rounded-lg shadow-md transition-opacity duration-1000 ease-out z-50">
+        Комната "<span id="room-name" class="font-bold"></span>" успешно создана!
+    </div>
+
+    <div id="notification-error"
+         class="hidden fixed top-10 left-1/2 transform -translate-x-1/2 p-4 bg-green-500 text-white font-semibold rounded-lg shadow-md transition-opacity duration-1000 ease-out z-50">
+        Комната "<span id="deleted-room-name" class="font-bold"></span>" успешно удалена!
+    </div>
+
+    <div id="notification-failure"
+         class="hidden fixed top-10 left-1/2 transform -translate-x-1/2 p-4 bg-red-500 text-white font-semibold rounded-lg shadow-md transition-opacity duration-1000 ease-out z-50">
+        Ошибка: комната не найдена или у вас нет прав на её удаление!
+    </div>
+
+
     {% if user_is_authenticated %}
-    <div class="mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Создать новую чат-комнату</h2>
+    <div class="flex justify-center space-x-4 mb-8 font-semibold">
+        <button onclick="toggleSearchForm()"
+                class="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition duration-300 ease-in-out flex items-center space-x-2">
+            <i class="lucide" data-lucide="search"></i>
+            <span>Поиск комнат</span>
+        </button>
+        <button onclick="toggleCreateRoomForm()"
+                class="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition duration-300 ease-in-out flex items-center space-x-2">
+            <i class="lucide" data-lucide="plus-circle"></i>
+            <span>Создать комнату</span>
+        </button>
+    </div>
+
+    <div id="search-form"
+         class="w-full max-w-lg mx-auto p-6 rounded-lg hidden opacity-0 transition-all duration-500 ease-out transform translate-y-4">
+        <h1 class="text-xl font-semibold text-gray-100 mb-4">Поиск чатов</h1>
+        <div class="flex items-center space-x-4 mb-6">
+            <input type="text" id="search-input" placeholder="Введите название комнаты (минимум 6 символов)"
+                   class="p-3 w-full bg-background text-gray-200 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button onclick="searchChatRooms()"
+                    class="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out">
+                Найти
+            </button>
+        </div>
+        <div id="search-results" class="space-y-3">
+        </div>
+    </div>
+
+    <div id="create-room-form"
+         class="w-full max-w-lg mx-auto p-6 rounded-lg hidden opacity-0 transition-all duration-500 ease-out transform translate-y-4">
+        <h1 class="text-xl font-semibold text-gray-100 mb-4">Создать новую комнату</h1>
         <form action="/chat_rooms/" method="post" class="flex items-center space-x-4">
             <input type="text" id="room_name" name="name" required placeholder="Название комнаты"
                    class="p-3 w-full bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent">
@@ -16,16 +61,21 @@
             </button>
         </form>
     </div>
-    <div>
-        <h2 class="text-2xl font-semibold mb-4">Ваши чат-комнаты</h2>
+
+    <div id="chat-rooms-list">
+        <h2 class="text-2xl font-semibold mb-4">Ваши чат-комнаты:</h2>
         <ul class="space-y-2">
             {% for room in chat_rooms %}
             <li class="p-4 bg-background border border-border rounded flex justify-between items-center">
                 <span>{{ room.name }}</span>
                 <div class="space-x-4">
                     <a href="/chat/{{ room.id }}" class="text-accent hover:text-accent-hover transition duration-300">Войти</a>
-                    <a href="/chat_rooms/{{ room.id }}/delete"
-                       class="text-red-500 hover:text-red-700 transition duration-300">Удалить</a>
+                    <a href="javascript:void(0);"
+                       onclick="deleteChatRoom({{ room.id }}, '{{ room.name }}')"
+                       class="text-red-500 hover:text-red-700 transition duration-300">
+                        Удалить
+                    </a>
+
                 </div>
             </li>
             {% endfor %}
@@ -34,12 +84,153 @@
     {% else %}
     <div class="text-center">
         <h1 class="text-3xl font-bold mb-6">Добро пожаловать!</h1>
-        <p class="text-lg mb-8">Чтобы получить доступ к чат-комнатам, вам необходимо войти в систему или зарегистрироваться.</p>
+        <p class="text-lg mb-8">Чтобы получить доступ к чат-комнатам, вам необходимо войти в систему или
+            зарегистрироваться.</p>
         <div class="flex justify-center space-x-4">
-            <a href="/login" class="p-3 bg-accent text-white rounded hover:bg-accent-hover transition duration-300 ease-in-out">Войти</a>
-            <a href="/register" class="p-3 bg-foreground text-background rounded hover:bg-foreground/90 transition duration-300 ease-in-out">Зарегистрироваться</a>
+            <a href="/login"
+               class="p-3 bg-accent text-white rounded hover:bg-accent-hover transition duration-300 ease-in-out">Войти</a>
+            <a href="/register"
+               class="p-3 bg-foreground text-background rounded hover:bg-foreground/90 transition duration-300 ease-in-out">Зарегистрироваться</a>
         </div>
     </div>
     {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        function showNotification(type, roomName = "") {
+            const notificationSuccess = document.getElementById('notification-success');
+            const notificationError = document.getElementById('notification-error');
+            const notificationFailure = document.getElementById('notification-failure');
+
+            if (type === 'created') {
+                const roomNameSpan = document.getElementById('room-name');
+                roomNameSpan.textContent = roomName;
+                notificationSuccess.classList.remove('hidden');
+                setTimeout(() => notificationSuccess.classList.add('opacity-0'), 10000);
+                setTimeout(() => notificationSuccess.classList.add('hidden'), 11000);
+            } else if (type === 'deleted') {
+                const roomNameSpan = document.getElementById('deleted-room-name');
+                roomNameSpan.textContent = roomName;
+                notificationError.classList.remove('hidden');
+                setTimeout(() => notificationError.classList.add('opacity-0'), 10000);
+                setTimeout(() => notificationError.classList.add('hidden'), 11000);
+            } else if (type === 'error') {
+                notificationFailure.classList.remove('hidden');
+                setTimeout(() => notificationFailure.classList.add('opacity-0'), 10000);
+                setTimeout(() => notificationFailure.classList.add('hidden'), 11000);
+            }
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('created') && urlParams.has('room_name')) {
+            const roomName = urlParams.get('room_name');
+            showNotification('created', roomName);
+        } else if (urlParams.has('deleted') && urlParams.has('room_name')) {
+            const roomName = urlParams.get('room_name');
+            showNotification('deleted', roomName);
+        } else if (urlParams.has('error')) {
+            showNotification('error');
+        }
+
+        if (urlParams.has('created') || urlParams.has('deleted') || urlParams.has('error')) {
+            urlParams.delete('created');
+            urlParams.delete('deleted');
+            urlParams.delete('error');
+            urlParams.delete('room_name');
+            const newUrl = window.location.origin + window.location.pathname + '?' + urlParams.toString();
+            window.history.replaceState({}, document.title, newUrl);
+        }
+
+        function toggleSearchForm() {
+            const searchForm = document.getElementById('search-form');
+            const createRoomForm = document.getElementById('create-room-form');
+            const chatRoomsList = document.getElementById('chat-rooms-list');
+
+            chatRoomsList.classList.add('hidden');
+            createRoomForm.classList.add('hidden');
+            createRoomForm.classList.remove('opacity-100');
+            searchForm.classList.toggle('hidden');
+            searchForm.classList.toggle('opacity-100');
+            searchForm.classList.toggle('translate-y-0');
+        }
+
+        function toggleCreateRoomForm() {
+            const searchForm = document.getElementById('search-form');
+            const createRoomForm = document.getElementById('create-room-form');
+            const chatRoomsList = document.getElementById('chat-rooms-list');
+
+            chatRoomsList.classList.add('hidden');
+            searchForm.classList.add('hidden');
+            searchForm.classList.remove('opacity-100');
+            createRoomForm.classList.toggle('hidden');
+            createRoomForm.classList.toggle('opacity-100');
+            createRoomForm.classList.toggle('translate-y-0');
+        }
+
+        async function searchChatRooms() {
+            const query = document.getElementById('search-input').value.trim();
+            const searchResultsContainer = document.getElementById('search-results');
+
+            if (query.length < 6) {
+                searchResultsContainer.innerHTML = '<p class="text-gray-400 italic">Введите минимум 6 символов для поиска...</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/search_rooms?query=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Ошибка поиска');
+                const rooms = await response.json();
+
+                searchResultsContainer.innerHTML = '';
+
+                if (rooms.length > 0) {
+                    rooms.forEach(room => {
+                        const roomElement = document.createElement('div');
+                        roomElement.className = 'p-4 bg-gray-700 border border-gray-600 rounded-lg flex justify-between items-center';
+
+                        roomElement.innerHTML = `
+                        <div>
+                            <span class="font-semibold text-gray-200">${room.name}</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/chat/${room.id}" class="text-blue-400 hover:text-blue-500 transition duration-300">Войти</a>
+                        </div>
+                    `;
+                        searchResultsContainer.appendChild(roomElement);
+                    });
+                } else {
+                    searchResultsContainer.innerHTML = '<p class="text-gray-400 italic">Ничего не найдено...</p>';
+                }
+            } catch (error) {
+                console.error('Ошибка при выполнении поиска:', error);
+                searchResultsContainer.innerHTML = '<p class="text-red-500">Ошибка поиска</p>';
+            }
+        }
+
+        async function deleteChatRoom(roomId, roomName) {
+            if (!confirm(`Вы уверены, что хотите удалить комнату "${roomName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/chat_rooms/${roomId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showNotification('deleted', roomName);
+
+                    document.getElementById(`room-${roomId}`).remove();
+                } else {
+                    const errorData = await response.json();
+                    console.error("Ошибка при удалении комнаты:", errorData.detail);
+                    showNotification('error');
+                }
+            } catch (error) {
+                console.error("Ошибка при удалении комнаты:", error);
+                showNotification('error');
+            }
+        }
+    </script>
 </main>
 {% endblock %}

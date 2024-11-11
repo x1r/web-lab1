@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Чат: {{ room_name }}{% endblock %}
+{% block title %}@{{ room_name }}{% endblock %}
 
 {% block content %}
-<main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg shadow-lg">
+<main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg">
     <h1 class="text-3xl font-semibold mb-6">Чат: {{ room_name }}</h1>
     <div id="chat-window" class="mb-4 p-4 bg-background border border-border rounded-lg h-80 overflow-y-auto">
-        <!-- Здесь будут отображаться сообщения чата -->
     </div>
     <form id="send-message-form" class="flex items-center space-x-4">
         <input type="text" id="message" name="message" required placeholder="Введите сообщение..."
@@ -19,32 +18,61 @@
 </main>
 <script>
     const roomId = "{{ room_id }}";
-    const cookieString = document.cookie.split('; ').find(row => row.startsWith('Authorization='));
-
-    let token = null;
-    if (cookieString) {
-        token = cookieString.split('=')[1].replace(/%22/g, '');  // Убираем кавычки если они есть
-    }
+    const token = "{{ token }}";
 
     if (token) {
-        const ws = new WebSocket(`ws://localhost:8001/ws/chat/${roomId}?token=${token}`);
+        const ws = new WebSocket(`ws://${window.location.hostname}:8001/ws/chat/${roomId}?token=${token}`);
 
         ws.onopen = function () {
             console.log('WebSocket подключен');
         };
 
-        ws.onmessage = function(event) {
+
+        const user_email = "{{ user_email }}";
+
+        ws.onmessage = function (event) {
             const chatWindow = document.getElementById('chat-window');
             const messageElement = document.createElement('div');
-            messageElement.textContent = event.data;
+
+            const [senderEmail, message] = event.data.includes(": ") ? event.data.split(": ", 2) : [null, event.data];
+
+            const isSystemMessage = !senderEmail;
+
+            if (isSystemMessage) {
+                messageElement.className = "text-center text-gray-600 italic my-2";
+                messageElement.textContent = message;
+            } else {
+                const isMyMessage = (senderEmail === user_email);
+
+                messageElement.className = `message flex ${isMyMessage ? "justify-end" : "justify-start"} w-full my-2`;
+
+                const messageContent = document.createElement('div');
+                messageContent.className = `${isMyMessage ? "bg-blue-500 text-white text-right" : "bg-gray-300 text-gray-800 text-left"}
+            rounded-lg p-2 min-w-[75px] max-w-[70%] break-words`;
+
+                const senderElement = document.createElement('div');
+                senderElement.className = "text-sm font-semibold mb-1";
+                senderElement.textContent = isMyMessage ? "Вы" : senderEmail;
+
+                const messageTextElement = document.createElement('div');
+                messageTextElement.className = "text-base";
+                messageTextElement.textContent = message;
+
+                messageContent.appendChild(senderElement);
+                messageContent.appendChild(messageTextElement);
+
+                messageElement.appendChild(messageContent);
+            }
+
             chatWindow.appendChild(messageElement);
-            chatWindow.scrollTop = chatWindow.scrollHeight;  // Прокрутка вниз для новых сообщений
+            chatWindow.scrollTop = chatWindow.scrollHeight;
         };
+
 
         const messageForm = document.getElementById('send-message-form');
         const messageInput = document.getElementById('message');
 
-        messageForm.onsubmit = function(event) {
+        messageForm.onsubmit = function (event) {
             event.preventDefault();
             const message = messageInput.value;
             if (message) {
@@ -53,7 +81,7 @@
             }
         };
     } else {
-        console.error('Токен не найден в куках!');
+        console.error('Токен не найден!');
     }
 </script>
 

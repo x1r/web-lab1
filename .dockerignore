@@ -1,0 +1,17 @@
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+venv/
+*.pyc
+*.pyo
+__pycache__/
+
+logs/
+*.log
+dump/
+
+docker-compose.override.yml
+.env

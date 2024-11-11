@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}| Lab 1 {% endblock %}</title>
-    <!-- Подключение шрифта Inter -->
+    <title>{% block title %}{% endblock %} | Lab 1 </title>
+    <link rel="icon" type="image/svg+xml"
+          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-globe'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E%3Cpath d='M2 12h20'/%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp,container-queries"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -34,14 +35,13 @@
 
     </style>
 </head>
-<body class="bg-background text-foreground font-sans antialiased">
+<body class="bg-background text-foreground font-sans antialiased flex flex-col min-h-screen">
 
-<!-- Навигационная панель -->
 <nav class="bg-background border-b border-border p-4">
     <div class="container mx-auto flex justify-between items-center">
         <a href="/"
            class="text-foreground text-xl font-semibold hover:text-accent transition duration-300 flex items-center">
-            <i class="lucide" data-lucide="layout-dashboard"></i>
+            <i class="lucide" data-lucide="globe"></i>
             <span class="ml-2">Lab 1</span>
         </a>
         <ul class="flex space-x-6">
@@ -83,20 +83,17 @@
     </div>
 </nav>
 
-<!-- Основное содержимое -->
-<main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg shadow-lg">
+<main class="container mx-auto mt-10 p-8 bg-neutral-900 text-foreground rounded-lg shadow-lg flex-grow">
     {% block content %}
     {% endblock %}
 </main>
 
-<!-- Футер -->
 <footer class="bg-background border-t border-border mt-10 p-6">
     <div class="container mx-auto text-center text-neutral-400">
         <p>Все права защищены &copy; 2024</p>
     </div>
 </footer>
 
-<!-- Инициализация иконок Lucide -->
 <script>
     lucide.createIcons();
 </script>

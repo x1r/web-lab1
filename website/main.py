@@ -6,6 +6,7 @@ from fastapi import Request, Form
 from fastapi import status
 from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
 from jose import JWTError, jwt
@@ -56,13 +57,23 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+def create_room_token(user_email, room_id, room_name):
+    payload = {
+        "sub": user_email,
+        "room_id": room_id,
+        "room_name": room_name
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
 class UserCreate(BaseModel):
     email: str
     password: str
 
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)):
-
+    print(f"Header: {request.headers.get('Authorization')}")
+    print(f"Cookie: {request.cookies.get('Authorization')}")
     token = request.headers.get("Authorization")
     if token and token.startswith("Bearer "):
         token = token[len("Bearer "):]
@@ -115,7 +126,6 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
 
     print(f"Пользователь {user.email} аутентифицирован с токеном {token};")
     return user
-
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -238,14 +248,16 @@ async def create_chat_room(
 ):
     chat_room = db.query(ChatRoom).filter(ChatRoom.name == name).first()
     if chat_room:
-        raise HTTPException(status_code=400, detail="Chat room with this name already exists")
+        response = RedirectResponse(url=f"/chat_rooms?error=1", status_code=303)
+        return response
 
     new_chat_room = ChatRoom(name=name, owner_id=current_user.id)
     db.add(new_chat_room)
     db.commit()
     db.refresh(new_chat_room)
 
-    return {"message": f"Chat room '{name}' created successfully"}
+    response = RedirectResponse(url=f"/chat_rooms?created=1&room_name={name}", status_code=303)
+    return response
 
 
 @app.get("/chat_rooms", response_class=HTMLResponse)
@@ -269,16 +281,25 @@ async def get_chat_rooms(request: Request,
                                        "user_email": user_email, "chat_rooms": chat_rooms})
 
 
+
 @app.delete("/chat_rooms/{room_id}")
-async def delete_chat_room(room_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def delete_chat_room(
+    room_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     chat_room = db.query(ChatRoom).filter(ChatRoom.id == room_id, ChatRoom.owner_id == current_user.id).first()
     if not chat_room:
-        raise HTTPException(status_code=404, detail="Chat room not found or you do not have permission to delete it")
+        response = RedirectResponse(url=f"/chat_rooms?error=not_found_or_no_permission", status_code=303)
+        return response
 
+    room_name = chat_room.name
     db.delete(chat_room)
     db.commit()
 
-    return {"message": f"Chat room '{chat_room.name}' deleted successfully"}
+    response = RedirectResponse(url=f"/chat_rooms?deleted=1&room_name={room_name}", status_code=303)
+    return response
+
 
 
 @app.get("/logout")
@@ -299,6 +320,7 @@ async def enter_chat_room(
         request: Request,
         db: Session = Depends(get_db),
 ):
+    print(room_id)
     user_is_authenticated = False
     user_email = ""
     try:
@@ -313,13 +335,27 @@ async def enter_chat_room(
     print(ChatRoom.id == room_id)
     if chat_room is None:
         raise HTTPException(status_code=404, detail="Chat room not found")
+    token = create_room_token(user_email, room_id, chat_room.name)
 
     return templates.TemplateResponse(
         "chat_room.html",
         {
             "request": request,
             "user_is_authenticated": user_is_authenticated,
+            "room_id": room_id,
             "user_email": user_email,
-            "room_name": chat_room.name
+            "room_name": chat_room.name,
+            "token": token,
         },
     )
+
+
+@app.get("/search_rooms")
+async def search_chat_rooms(query: Optional[str] = None, db: Session = Depends(get_db)):
+    if query and len(query) >= 6:
+        chat_rooms = db.query(ChatRoom).filter(ChatRoom.name.contains(query)).all()
+        return JSONResponse([{"id": room.id, "name": room.name} for room in chat_rooms])
+    elif query and len(query) < 6:
+        raise HTTPException(status_code=400, detail="Поисковый запрос должен содержать минимум 6 символов.")
+    else:
+        return JSONResponse([])
