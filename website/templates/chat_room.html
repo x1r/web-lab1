@@ -21,7 +21,6 @@
     const roomId = "{{ room_id }}";
     const cookieString = document.cookie.split('; ').find(row => row.startsWith('Authorization='));
 
-    // Проверяем, нашлась ли кука с авторизацией, и корректно ли извлекается значение токена
     let token = null;
     if (cookieString) {
         token = cookieString.split('=')[1].replace(/%22/g, '');  // Убираем кавычки если они есть

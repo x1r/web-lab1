@@ -28,10 +28,8 @@ app = FastAPI()
 router = APIRouter()
 app.include_router(router)
 
-# Настраиваем контекст для хеширования паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Секретный ключ для подписи JWT и алгоритм
 SECRET_KEY = "my_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -58,21 +56,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-# Модель для регистрации пользователя
 class UserCreate(BaseModel):
     email: str
     password: str
 
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)):
-    # Логируем информацию о заголовках и cookie для диагностики
 
-    # Проверяем наличие токена в заголовке Authorization
     token = request.headers.get("Authorization")
     if token and token.startswith("Bearer "):
         token = token[len("Bearer "):]
     elif "Authorization" in request.cookies:
-        # Если токен отсутствует в заголовке, ищем его в куках
         token = request.cookies.get("Authorization").strip('"')
         if token.startswith("Bearer "):
             token = token[len("Bearer "):]
@@ -84,7 +78,6 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Декодируем токен
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
@@ -103,7 +96,6 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Проверяем наличие пользователя в базе данных
     try:
         user = db.query(User).filter(User.email == email).first()
     except Exception as e:
@@ -132,17 +124,13 @@ async def read_root(request: Request, db: Session = Depends(get_db)):
     user_email = ""
 
     try:
-        # Пробуем получить авторизованного пользователя
         user = await get_current_user(request, db)
         user_is_authenticated = True
         user_email = user.email
     except HTTPException as e:
-        # Если пользователь не авторизован, оставляем user_is_authenticated = False
         if e.status_code != 401:
-            # Если возникла ошибка, отличная от 401, перекидываем её дальше
             raise e
 
-    # Рендерим шаблон с учетом статуса авторизации
     return templates.TemplateResponse(
         "index.html",
         {"request": request, "user_is_authenticated": user_is_authenticated, "user_email": user_email},
@@ -155,14 +143,11 @@ async def get_register_page(request: Request, db: Session = Depends(get_db)):
     user_email = ""
 
     try:
-        # Пробуем получить авторизованного пользователя
         user = await get_current_user(request, db)
         user_is_authenticated = True
         user_email = user.email
     except HTTPException as e:
-        # Если пользователь не авторизован, оставляем user_is_authenticated = False
         if e.status_code != 401:
-            # Если возникла ошибка, отличная от 401, перекидываем её дальше
             raise e
 
     return templates.TemplateResponse(
@@ -173,12 +158,10 @@ async def get_register_page(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/register")
 async def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    # Проверяем, существует ли уже пользователь с данным email
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Хешируем пароль и сохраняем пользователя
     hashed_password = get_password_hash(user.password)
     new_user = User(email=user.email, hashed_password=hashed_password)
     db.add(new_user)
@@ -194,14 +177,11 @@ async def get_login_page(request: Request, db: Session = Depends(get_db)):
     user_email = ""
 
     try:
-        # Пробуем получить авторизованного пользователя
         user = await get_current_user(request, db)
         user_is_authenticated = True
         user_email = user.email
     except HTTPException as e:
-        # Если пользователь не авторизован, оставляем user_is_authenticated = False
         if e.status_code != 401:
-            # Если возникла ошибка, отличная от 401, перекидываем её дальше
             raise e
 
     return templates.TemplateResponse(
@@ -256,12 +236,10 @@ async def create_chat_room(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
-    # Проверяем, существует ли комната с данным именем
     chat_room = db.query(ChatRoom).filter(ChatRoom.name == name).first()
     if chat_room:
         raise HTTPException(status_code=400, detail="Chat room with this name already exists")
 
-    # Создаем новую комнату
     new_chat_room = ChatRoom(name=name, owner_id=current_user.id)
     db.add(new_chat_room)
     db.commit()
@@ -278,15 +256,12 @@ async def get_chat_rooms(request: Request,
     chat_rooms = []
 
     try:
-        # Пробуем получить авторизованного пользователя
         user = await get_current_user(request, db)
         user_is_authenticated = True
         chat_rooms = db.query(ChatRoom).filter(ChatRoom.owner_id == user.id).all()
         user_email = user.email
     except HTTPException as e:
-        # Если пользователь не авторизован, оставляем user_is_authenticated = False
         if e.status_code != 401:
-            # Если возникла ошибка, отличная от 401, перекидываем её дальше
             raise e
 
     return templates.TemplateResponse("chat_rooms.html",
@@ -296,7 +271,6 @@ async def get_chat_rooms(request: Request,
 
 @app.delete("/chat_rooms/{room_id}")
 async def delete_chat_room(room_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Проверяем, принадлежит ли комната текущему пользователю
     chat_room = db.query(ChatRoom).filter(ChatRoom.id == room_id, ChatRoom.owner_id == current_user.id).first()
     if not chat_room:
         raise HTTPException(status_code=404, detail="Chat room not found or you do not have permission to delete it")
@@ -311,11 +285,9 @@ async def delete_chat_room(room_id: int, current_user: User = Depends(get_curren
 async def logout():
     response = RedirectResponse(url="/")
 
-    # Удаление куки
     response.delete_cookie(key="Authorization")
     response.delete_cookie(key="user")
 
-    # Удаление заголовка Authorization (если использовался)
     response.headers["Authorization"] = ""
 
     return response
@@ -336,14 +308,12 @@ async def enter_chat_room(
     except HTTPException as e:
         if e.status_code != 401:
             raise e
-    # Ищем комнату по ID
     chat_room = db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
     print(chat_room)
     print(ChatRoom.id == room_id)
     if chat_room is None:
         raise HTTPException(status_code=404, detail="Chat room not found")
 
-    # Рендерим шаблон чата для комнаты
     return templates.TemplateResponse(
         "chat_room.html",
         {
